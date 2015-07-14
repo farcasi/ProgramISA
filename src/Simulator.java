@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,16 +20,14 @@ public class Simulator {
 		Simulator ms = new Simulator();
 		StringBuffer output = new StringBuffer();
 		
-		for (String s : args) {
-			try {
-				output.append(ms.simulate(s) + "\n");
-			} catch (Exception e) {
-				ms.logger.log(Level.SEVERE, e.getMessage(), e);
-			}
+		try {
+			output.append(ms.simulate(args) + "\n");
+		} catch (Exception e) {
+			ms.logger.log(Level.SEVERE, e.getMessage(), e);
 		}
 		
 		if (output.length() > args.length) { // there's at least 1 \n for each arg, so this is the minimum
-			System.out.println("Output: "+output);
+			System.out.println("Output:\n"+output);
 			//FileHelper.writeFile("Simulator Output "+(new Timestamp(System.currentTimeMillis())), output.toString()); //TODO: create file
 		} else {
 			ms.logger.info("Output was empty. No output file created.");
@@ -63,24 +62,27 @@ public class Simulator {
 	 * @param file The path to a file containing C-like code
 	 * @return The compiled forms of the file's code under different ISAs 
 	 */
-	public String simulate(String file) {
-		StringBuffer input = FileHelper.readFile(file), output = new StringBuffer();
+	public String simulate(String[] files) {
+		StringBuffer input, output = new StringBuffer();
 		Compiler c;
-		
-		output.append("File: " + file + "\n");
 		
 		for (ISA i : ISA.values()) {
 			if (i == ISA.MM4ADDRESS) { // TODO: remove after all ISAs are implemented
+				output.append("Architecture: " + i + "\n");
 				try {
 					c = Compiler.getCompiler(i);
-					output.append("Architecture: " + i + "\n");
-					output.append(c.compile(input.toString()) + "\n\n");
+					for (String file : files) {
+						input = FileHelper.readFile(file);
+						output.append("File: " + file + "\nCode:\n");
+						output.append(c.compile(input.toString()) + "\n");
+					}
 				} catch (RuntimeException re) {
 					throw re;
 				} catch (Exception e) {
 					output.append(e.getMessage());
 					logger.log(Level.SEVERE, e.getMessage(), e);
 				}
+				output.append("\n");
 			}
 		}
 		

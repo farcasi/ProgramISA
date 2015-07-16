@@ -11,7 +11,7 @@ import java.util.LinkedList;
  * instr resultAddr, oper1Addr, oper2Addr, nextInstrAddr
  * 
  */
-public class MM4AddressCompiler extends Compiler {
+public class MM3AddressCompiler extends Compiler {
 	
 	/** Returns the ISA version of the variable. 
 	 * In the case of MM4Address, it's just var.
@@ -90,16 +90,6 @@ public class MM4AddressCompiler extends Compiler {
 				toWrite.append(", ");
 			}
 			toWrite.append(operands[i]);
-		}
-		
-		if (!operation.matches("j|jr|jal")) { // we already have a label we're going to, so don't add the next line as the destination
-			instructionSize += 3;
-			programBits += 24;
-			if (insideFunctionDeclaration) {
-				toWrite.append(", "+(programCounter+instructionSize+1000));
-			} else {
-				toWrite.append(", "+(programCounter+instructionSize));
-			}
 		}
 		
 		toWrite.append("\n");

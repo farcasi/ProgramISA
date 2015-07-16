@@ -67,7 +67,7 @@ public class Simulator {
 		Compiler c;
 		
 		for (ISA i : ISA.values()) {
-			if (i == ISA.MM4ADDRESS) { // TODO: remove after all ISAs are implemented
+			if (i == ISA.MM3ADDRESS) { // TODO: remove after all ISAs are implemented
 				output.append("Architecture: " + i + "\n");
 				try {
 					c = Compiler.getCompiler(i);

@@ -8,7 +8,7 @@ import java.util.logging.SimpleFormatter;
 
 public class Simulator {
 
-	private final Logger logger = Logger.getLogger(Simulator.class.getName());
+	public final Logger logger = Logger.getLogger(Simulator.class.getName());
 	
 	FileHandler fh;
 	
@@ -28,7 +28,7 @@ public class Simulator {
 		
 		if (output.length() > args.length) { // there's at least 1 \n for each arg, so this is the minimum
 			System.out.println("Output:\n"+output);
-			//FileHelper.writeFile("Simulator Output "+(new Timestamp(System.currentTimeMillis())), output.toString()); //TODO: create file
+			FileHelper.writeFile("Simulator Output "+(new Timestamp(System.currentTimeMillis())), output.toString()); //TODO: create file
 		} else {
 			ms.logger.info("Output was empty. No output file created.");
 		}
@@ -67,23 +67,21 @@ public class Simulator {
 		Compiler c;
 		
 		for (ISA i : ISA.values()) {
-			if (i == ISA.MM3ADDRESS) { // TODO: remove after all ISAs are implemented
-				output.append("Architecture: " + i + "\n");
-				try {
-					c = Compiler.getCompiler(i);
-					for (String file : files) {
-						input = FileHelper.readFile(file);
-						output.append("File: " + file + "\nCode:\n");
-						output.append(c.compile(input.toString()) + "\n");
-					}
-				} catch (RuntimeException re) {
-					throw re;
-				} catch (Exception e) {
-					output.append(e.getMessage());
-					logger.log(Level.SEVERE, e.getMessage(), e);
+			output.append("Architecture: " + i + "\n");
+			try {
+				c = Compiler.getCompiler(i);
+				for (String file : files) {
+					input = FileHelper.readFile(file);
+					output.append("File: " + file + "\nCode:\n");
+					output.append(c.compile(input.toString()) + "\n");
 				}
-				output.append("\n");
+			} catch (RuntimeException re) {
+				throw re;
+			} catch (Exception e) {
+				output.append(e.getMessage());
+				logger.log(Level.SEVERE, e.getMessage(), e);
 			}
+			output.append("\n");
 		}
 		
 		return output.toString();

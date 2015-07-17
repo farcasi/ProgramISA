@@ -1,14 +1,17 @@
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
+// The size of memory is such that each memory address is 24 bits
+// If there are registers, we use 32 (so they can be addressed with 5 bits)
 public abstract class Compiler {
 	
-	protected static final String[] KEYWORDS = {"+", "-", "/", "*", "goto", "if", "else", "while", "switch"};
-	protected static final String[] IDENTIFIERS = {"byte", "short", "int", "long", "float", "double", "boolean", "char"};
-	protected enum Operation { ADD, SUB, MUL, DIV, GOTO }
+	protected static final String[] KEYWORDS = {"+", "-", "/", "*", "goto", "if", "else", "while", "switch", "return"};
+	protected static final String[] IDENTIFIERS = {"byte", "short", "int", "long", "float", "double", "boolean", "char", "void"};
+	protected enum Operation { ADD, SUB, MUL, DIV, GOTO, NULL }
 	protected enum IfCondition { EQ, NE, LE }
 	protected Set<String> vars, labels;
 	protected int programBits = 0, instructionSize = 0, programCounter = 0, 
@@ -18,14 +21,15 @@ public abstract class Compiler {
 			ifLabels = new LinkedList<String>(),
 			jumpLabels = new LinkedList<String>(),
 			currentArgs = new LinkedList<String>(),
-			stack = new LinkedList<String>();
+			stack = new LinkedList<String>(),
+			returns = new LinkedList<String>();
 	protected StringBuffer output = new StringBuffer(), 
 			bracketStatement = new StringBuffer(),
 			functionsToAdd = new StringBuffer();
 	protected String fullCode;
 	protected String[] toRemove = new String[0];
 	protected HashMap<String, LinkedList<String>> functions = new HashMap<String, LinkedList<String>>(); // name -> args
-	protected boolean insideBrackets = false, insideFunctionDeclaration = false;
+	protected boolean insideBrackets = false, insideFunctionDeclaration = false, inSubline = false;
 	
 	/** Returns a compiler for the given architecture.
 	 * 
@@ -37,10 +41,12 @@ public abstract class Compiler {
 		switch(architecture) {
 		case MM4ADDRESS: c = new MM4AddressCompiler(); break;
 		case MM3ADDRESS: c = new MM3AddressCompiler(); break;
+		case MM2ADDRESS: c = new MM2AddressCompiler(); break;
+		case ACCUMULATOR: c = new AccumulatorCompiler(); break;
+		case STACK: c = new StackCompiler(); break;
+		case LOADSTORE: c = new LoadStoreCompiler(); break;
 		default: c = new MM4AddressCompiler();
 		}
-		
-		System.out.println("\nCompiler created for "+architecture);
 		
 		return c;
 	}
@@ -53,37 +59,48 @@ public abstract class Compiler {
 	public String compile(String code) throws StringNotFoundException {
 		clear();
 		fullCode = code.replaceAll("\n", "");
-		
-		String[] lines = fullCode.split("(?<=;)"); // split lines by semi-colon
-		System.out.println("Lines: " + java.util.Arrays.toString(lines));
-		
-		// translate each line into ISA code
-		for (int i=0; i<lines.length; i++) {
-			System.out.println("Line "+(i+1));
-			if (lines[i].replaceAll("\\s+", "").length() < 1) {
-				// line contains only ; or nothing
-				continue;
-			}
+		String errorLine = "";
+		try {
+			String[] lines = fullCode.split("(?<=[;}])"); // split lines by semi-colon
 			
-			translateAndAppendLine(lines[i]);
+			// translate each line into ISA code
+			for (int i=0; i<lines.length; i++) {
+				if (lines[i].replaceAll("\\s+", "").length() < 1) {
+					// line contains only ; or nothing
+					continue;
+				}
+				
+				if (i-2 >= 0) {
+					errorLine = lines[i-2] +"\n"+ lines[i-1] +"\n"+ lines[i];
+				} else if (i-1 >= 0) {
+					errorLine = lines[i-1] +"\n"+ lines[i];
+				} else {
+					errorLine = lines[i];
+				}
+				translateAndAppendLine(lines[i]);
+			}
+			if (!labelsToPrepend.isEmpty()) {
+				output.append(labelsToPrepend.pollLast()+":\n");
+				numInstructions++;
+			}
+			if (!jumpLabels.isEmpty()) {
+				output.append(jumpLabels.pollLast()+":\n");
+				numInstructions++;
+			}
+			if (functionsToAdd.length() > 0) {
+				// these functions appear later in the code than our original program
+				output.append("...\n");
+				output.append(functionsToAdd);
+				// and we already counted the instructions size/number when we put them in functionsToAdd
+			}
+			output.append("\nInstruction count:\t"+numInstructions+"\n"
+					+ "Size of resulting code:\t"+programBits+" bits\n"
+					+ "# of memory accesses:\t"+memAccesses+"\n");
+		} catch (Exception e) {
+			System.out.println("Error in lines:\n"+errorLine);
+			throw e;
 		}
-		if (!labelsToPrepend.isEmpty()) {
-			output.append(labelsToPrepend.pollLast()+":\n");
-			numInstructions++;
-		}
-		if (!jumpLabels.isEmpty()) {
-			output.append(jumpLabels.pollLast()+":\n");
-			numInstructions++;
-		}
-		if (functionsToAdd.length() > 0) {
-			output.append(functionsToAdd);
-			// and we already counted the instructions size/number when we put them in functionsToAdd
-		}
-		/* TODO: Uncomment this
-		output.append("\nInstruction count:\t"+numInstructions+"\n"
-				+ "Size of resulting code:\t"+programBits+" bits\n"
-				+ "# of memory accesses:\t"+memAccesses+"\n");
-		*/
+		
 		return output.toString();
 	}
 	
@@ -93,6 +110,8 @@ public abstract class Compiler {
 	protected void clear() {
 		vars = new HashSet<String>();
 		labels = new HashSet<String>();
+		instructionSize = 0;
+		memAccesses = 0;
 		programBits = 0;
 		programCounter = 0;
 		numInstructions = 0;
@@ -103,6 +122,7 @@ public abstract class Compiler {
 		functions.clear();
 		currentArgs.clear();
 		stack.clear();
+		returns.clear();
 		output.delete(0, output.length());
 		bracketStatement.delete(0, bracketStatement.length());
 		functionsToAdd.delete(0, functionsToAdd.length());
@@ -110,6 +130,7 @@ public abstract class Compiler {
 		toRemove = new String[0];
 		insideBrackets = false;
 		insideFunctionDeclaration = false;
+		inSubline = false;
 	}
 	
 	/** Translates a line to 4-address assembly code and returns the result
@@ -156,7 +177,6 @@ public abstract class Compiler {
 		if (tokens.length < 1) {
 			return;
 		}
-		System.out.println("Tokens: " + java.util.Arrays.toString(tokens)+"\t"+tokens.length);
 		
 		// get a label if one exists
 		for (int i=0; i<tokens.length; i++) {
@@ -199,7 +219,6 @@ public abstract class Compiler {
 					// function call or declaration, don't analyze contents
 					continue;
 				}
-				System.out.println("\topen parens");
 				tokens[i] = " ";
 				// enumerate a new register, and translate the subline
 				// between parenthesis as another line
@@ -224,7 +243,9 @@ public abstract class Compiler {
 				// replace a token instead of adding it to operands so it isn't counted twice below
 				tokens[i+1] = temps.peekLast();
 				
+				inSubline = true;
 				translateAndAppendLine(subLine.toString());
+				inSubline = false;
 				subLine.delete(0, subLine.length());
 			}
 		}
@@ -247,7 +268,7 @@ public abstract class Compiler {
 			for (i=0; i<tokens.length; i++) {
 				if (!inSubLine) {
 					// basically before the '=', we shouldn't reach after 2nd operation symbol
-					if (tokens[i].contentEquals("=")) {
+					if (tokens[i].contentEquals("=") || tokens[i].contains("return")) {
 						subStart = i + 1;
 						inSubLine = true;
 					}
@@ -269,27 +290,25 @@ public abstract class Compiler {
 			tokens[subStart] = temps.peekLast();
 			
 			// make a separate instruction out of the new subLine
+			inSubline = true;
 			translateAndAppendLine(subLine.toString());
+			inSubline = false;
 			subLine.delete(0, subLine.length());
 		}
 		
 		// Parse the line
 		for (int i=0; i<tokens.length; i++) {
 			// determine what the token is and translate it
-			System.out.print(tokens[i]);// TODO: remove
 			
 			// start matching characters
 			if (tokens[i].contentEquals(";")) {
 				// end of line
-				System.out.println("\teol");
 				break;
 			} else if (tokens[i].matches("[\\s:]") || tokens[i].length() < 1) { // either whitespace or colon
 				// whitespace
-				System.out.println("\tnothing");
 				continue;
 			} else if (tokens[i].contentEquals("=")) {
 				// equals sign, we've passed the result part
-				System.out.println("\tequals");
 				if ((i+1 < tokens.length && tokens[i+1].contentEquals("=")) || 
 					(i-1 >= 0 && tokens[i-1].contentEquals("="))) {
 					// equality check, not assignment
@@ -302,7 +321,6 @@ public abstract class Compiler {
 			} else if (tokens[i].charAt(0) == '$') {
 				// the beginning of a register name
 				// get the rest of the register name
-				System.out.println("\tregister");
 				int numi = i + 1;
 				StringBuffer temp = new StringBuffer();
 				temp.append(tokens[i]);
@@ -319,11 +337,9 @@ public abstract class Compiler {
 				temp.delete(0, temp.length());
 			} else if (isNumeric(tokens[i])) {
 				// number
-				System.out.println("\tnum");
 				operands.add(tokens[i]);
 			} else if (tokens[i].length() > 1) {
 				// a word
-				System.out.println("\tword");
 				if (tokens[i].toLowerCase().contentEquals("goto")) {
 					operation = "j";
 				} else if (tokens[i].toLowerCase().contentEquals("if")) {
@@ -331,6 +347,11 @@ public abstract class Compiler {
 					handleIfStatement(line);
 					
 					// skip the rest of this line
+					// cleanup
+					while (!temps.isEmpty()) {
+						String var = ISAVarToVar(temps.pollLast());
+						tempAddrs.remove(var);
+					}
 					return;
 				} else if (tokens[i].toLowerCase().contentEquals("else")) {
 					// an else statement, presumably one we reached already
@@ -346,7 +367,7 @@ public abstract class Compiler {
 						
 						// make sure we have a match
 						int tempIndex = 0;
-						for (; tempIndex < toRemove.length; tempIndex++) {
+						for (; tempIndex < toRemove.length && ti+tempIndex < tokens.length; tempIndex++) {
 							if (!tokens[ti+tempIndex].contentEquals(toRemove[tempIndex])) {
 								break;
 							}
@@ -362,6 +383,11 @@ public abstract class Compiler {
 					handleWhileStatement(line);
 					
 					// skip the rest of this line
+					// cleanup
+					while (!temps.isEmpty()) {
+						String var = ISAVarToVar(temps.pollLast());
+						tempAddrs.remove(var);
+					}
 					return;
 				} else if (tokens[i].toLowerCase().contentEquals("switch")) {
 					// switch statement, handle separately
@@ -369,12 +395,22 @@ public abstract class Compiler {
 						bracketStatement.append(line);
 						insideBrackets = true;
 					}
+					// cleanup
+					while (!temps.isEmpty()) {
+						String var = ISAVarToVar(temps.pollLast());
+						tempAddrs.remove(var);
+					}
 					return;
 				} else if (i+1 < tokens.length && tokens[i+1].contentEquals("(")) {
 					if (line.contains("{")) {
 						// function declaration
 						bracketStatement.append(line);
 						insideBrackets = true;
+						// cleanup
+						while (!temps.isEmpty()) {
+							String var = ISAVarToVar(temps.pollLast());
+							tempAddrs.remove(var);
+						}
 						return;
 					} else {
 						// function call
@@ -389,9 +425,14 @@ public abstract class Compiler {
 							if (!insideFunctionDeclaration) {
 								labelsToPrepend.add(jumpLabels.pollLast());
 							}
-							jumpLabels.add(getReturnAddressName());
+							addReturnAddressLabel();
 						} else {
 							// otherwise line contains nothing else
+							// cleanup
+							while (!temps.isEmpty()) {
+								String var = ISAVarToVar(temps.pollLast());
+								tempAddrs.remove(var);
+							}
 							return;
 						}
 					}
@@ -420,14 +461,12 @@ public abstract class Compiler {
 				}
 			} else if (Character.isLetter(tokens[i].charAt(0))) {
 				// a letter (a variable)
-				System.out.println("\tchar");
 				if (!passedAssignmentOperator) {
 					result = varToISAVar(tokens[i]);
 				} else {
 					operands.add(tokens[i]);
 				}
 			} else if (tokens[i].contentEquals("(")) {
-				System.out.println("\topen parens");
 				tokens[i] = " ";
 				if (getNumOperations(tokens) < 2) {
 					for (int cpi = i; cpi < tokens.length; cpi++) {
@@ -463,7 +502,6 @@ public abstract class Compiler {
 				subLine.delete(0, subLine.length());
 			} else if (isOperation(tokens[i])) {
 				// an operation
-				System.out.println("\toperation");
 				
 				switch(getOperation(tokens[i])) {
 				case ADD: operation = "add"; break;
@@ -474,19 +512,29 @@ public abstract class Compiler {
 				default: throw new StringNotFoundException("No operation found.");
 				}
 			} else {
-				System.out.println("\tunknown");
+				// unknown
 			}
 		}
 		
 		// create the output line
-		if (!operands.isEmpty()) {
-			oper1 = varToISAVar(operands.poll());
+		if (result == getReturnValueName()) {
+			setReturnValue(result, operands);
+		} else {		
+			if (!operands.isEmpty()) {
+				oper1 = varToISAVar(operands.poll());
+			}
+			if (!operands.isEmpty()) {
+				oper2 = varToISAVar(operands.poll());
+			}
+			if (oper2.isEmpty()) {
+				addOneOperLine(result, oper1);
+			} else {
+				writeLine(operation, result, oper1, oper2);
+			}
+			if (!inSubline && !result.isEmpty()) {
+				store(result);
+			}
 		}
-		if (!operands.isEmpty()) {
-			oper2 = varToISAVar(operands.poll());
-		}
-		
-		writeLine(operation, result, oper1, oper2);
 		
 		// cleanup
 		while (!temps.isEmpty()) {
@@ -599,6 +647,34 @@ public abstract class Compiler {
 	 */
 	protected abstract String getReturnAddressName();
 	
+	/** Adds a store command in ISA code for the given variable 
+	 * 
+	 */
+	protected abstract void store(String word);
+	
+	/** Adds a jump command in ISA code for the given address/label
+	 * 
+	 * @param address
+	 */
+	protected abstract void jump(String address);
+	
+	/** Adds a return address label to the line if needed by the architecture
+	 * 
+	 */
+	protected abstract void addReturnAddressLabel();
+	
+	/** Loads the result of the operation in the return value
+	 * 
+	 */
+	protected abstract void setReturnValue(String result, LinkedList<String> operands);
+	
+	/** Adds a line for result = operand statements
+	 * 
+	 * @param result
+	 * @param operand
+	 */
+	protected abstract void addOneOperLine(String result, String operand);
+	
 	/** Returns the name of the variable/label that is the result of this line's operation.
 	 * e.g. In "A = B + C;" the result is A.
 	 *  
@@ -623,7 +699,7 @@ public abstract class Compiler {
 	 * 
 	 * @return the first operation on this line
 	 */
-	protected Operation getOperation(String line) throws StringNotFoundException {
+	protected Operation getOperation(String line) {
 		int start = line.indexOf('=');
 		String part = line.substring(start+1).toLowerCase();
 		if (part.contains("+")) {
@@ -637,7 +713,7 @@ public abstract class Compiler {
 		} else if (part.contains("goto")) {
 			return Operation.GOTO;
 		} else {
-			throw new StringNotFoundException("No operation found: "+line);
+			return Operation.NULL;
 		}
 	}
 	
@@ -649,7 +725,7 @@ public abstract class Compiler {
 	protected int getNumOperations(String[] tokens) {
 		int total = 0;
 		for (String s : tokens) {
-			if (isOperation(s)) {
+			if (isOperation(s) || s.contains("return")) {
 				total++;
 			}
 		}
@@ -719,7 +795,7 @@ public abstract class Compiler {
 		jumpLabels.add("Exit"+jumpLabels.size());
 		labels.add(jumpLabels.peekLast());
 		translateAndAppendLine(subCode.substring(5, elseStop)); // +5 to start after "else "
-		writeLine("j", jumpLabels.peekLast());
+		jump(jumpLabels.peekLast());
 		
 		toRemove = subCode.substring(5, elseStop).split("\\s|(?=[-+*/()=:;])|(?<=[^-+*/=:;][-+*/=:;])|(?<=[()])");
 	}

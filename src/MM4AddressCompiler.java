@@ -1,13 +1,10 @@
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 
 
 
-/** Each instruction is 8 + 24 x 4 = 104 bits, or 13 bytes
- * 
- * General format:
+/** General format:
  * instr resultAddr, oper1Addr, oper2Addr, nextInstrAddr
  * 
  */
@@ -56,7 +53,7 @@ public class MM4AddressCompiler extends Compiler {
 			} else if (isKeyword(w)) {
 				continue;
 			} else if (w.matches("[a-zA-Z]+")) { 
-				vars.add(w); // add the single-character variable
+				vars.add(w); 
 			}
 		}
 		
@@ -76,7 +73,7 @@ public class MM4AddressCompiler extends Compiler {
 			toWrite.append("\t");
 		}
 
-		instructionSize += 4;
+		instructionSize += 1;
 		programBits += 6; // 6 opcode
 		toWrite.append(operation+" ");
 		
@@ -96,7 +93,7 @@ public class MM4AddressCompiler extends Compiler {
 			instructionSize += 3;
 			programBits += 24;
 			if (insideFunctionDeclaration) {
-				toWrite.append(", "+(programCounter+instructionSize+1000));
+				toWrite.append(", "+(programCounter+instructionSize+10000));
 			} else {
 				toWrite.append(", "+(programCounter+instructionSize));
 			}
@@ -127,7 +124,7 @@ public class MM4AddressCompiler extends Compiler {
 		
 		if (index.matches("-?\\d+")) {
 			// index is an integer
-			writeLine("lw", tempName, String.valueOf(4 * Integer.parseInt(index)), "("+tokenReg+")");
+			writeLine("lw", tempName, String.valueOf(4 * Integer.parseInt(index))+"("+tokenReg+")");
 		} else {
 			// index is a variable
 			String indexReg = varToISAVar(tokenParts[1]);
@@ -233,7 +230,9 @@ public class MM4AddressCompiler extends Compiler {
 		case NE: // not equal  
 			writeLine("beq", oper1, oper2, label); break;
 		case LE: // less than  
-			// implement when I know how to do both "greater than" and "equal" in the same condition
+			String temp = getTempAddr();
+			writeLine("slt", temp, oper1, oper2);
+			writeLine("beq", temp, "0", label); break;
 		}
 
 		if (!hasGoto) {
@@ -257,7 +256,6 @@ public class MM4AddressCompiler extends Compiler {
 		if (!cases[cases.length-1].contains("default")) {
 			numCases--;
 		}
-		System.out.println("Cases: "+numCases+"\n"+Arrays.toString(cases));
 		
 		// add the lines for the switch variable
 		String switchVar = line.substring(line.indexOf('(')+1, line.indexOf(')'));
@@ -265,9 +263,9 @@ public class MM4AddressCompiler extends Compiler {
 		jumpLabels.add(exitLabel);
 		labels.add(jumpLabels.peekLast());
 		writeLine("slti", tempAddr, switchVar, "0");
-		writeLine("bne", tempAddr, "$zero", exitLabel);
+		writeLine("bne", tempAddr, "0", exitLabel);
 		writeLine("slti", tempAddr, switchVar, String.valueOf(numCases));
-		writeLine("beq", tempAddr, "$zero", exitLabel);
+		writeLine("beq", tempAddr, "0", exitLabel);
 		writeLine("add", tempAddr, switchVar, switchVar);
 		writeLine("add", tempAddr, tempAddr, tempAddr);
 		writeLine("add", tempAddr, tempAddr, "addrJumpTable");
@@ -302,13 +300,14 @@ public class MM4AddressCompiler extends Compiler {
 		if (insideFunctionDeclaration) {
 			// store local variables 
 			int i=0;
-			writeLine("add", "stackAddr"+i, getReturnAddressName());
+			writeLine("add", "stackAddr"+i, getReturnAddressName(), "0");
 			stack.add(getReturnAddressName());
 			for (String a : currentArgs) {
 				i++;
-				writeLine("add", "stackAddr"+i, a);
+				writeLine("add", "stackAddr"+i, a, "0");
 				stack.add(a);
 			}
+			returns.add(getReturnAddressName());
 		}
 		
 		// Get function name
@@ -332,16 +331,19 @@ public class MM4AddressCompiler extends Compiler {
 			argLabel = "arg"+functions.get(name).size();
 			functions.get(name).add(a);
 			if (!argLabel.matches(a)) { // unless they already match
-				writeLine("add", argLabel, a, "$zero");
+				writeLine("add", argLabel, a, "0");
 			}
 		}
+		
+		// call the function
 		writeLine("jal", name);
 		jumpLabels.add(getReturnAddressName());
 		if (insideFunctionDeclaration) {
+			returns.poll();
 			labelsToPrepend.add(jumpLabels.pollLast());
 			// load the stored local variables
 			for (String s : stack) {
-				writeLine("add", s, "stackAddr"+stack.indexOf(s), "$zero");
+				writeLine("add", s, "stackAddr"+stack.indexOf(s), "0");
 			}
 			stack.removeAll(stack);
 		}
@@ -354,14 +356,11 @@ public class MM4AddressCompiler extends Compiler {
 	 */
 	protected void handleFunctionDeclaration(String line) throws StringNotFoundException {
 		insideFunctionDeclaration = true;
-		// this function appears later in the code than our original program
-		functionsToAdd.append("...\n");
 		
 		// add function name to first line as a label
 		String[] tokens = line.split("\\s|(?=[-+*/()=:;])|(?<=[^-+*/=:;][-+*/=:;])|(?<=[()])");
 		String prev = "", name = "";
 		for (String t : tokens) {
-			System.out.println(t);
 			if (prev.length() > 0 && t.contentEquals("(")) {
 				name = prev;
 				break;
@@ -413,9 +412,14 @@ public class MM4AddressCompiler extends Compiler {
 	 * 
 	 */
 	protected String getReturnAddressName() {
-		return "returnAddress";
+		return "returnAddress"+returns.size();
 	}
 	
+	/** Returns the operands in parenthesis to be compared in a while/if statement
+	 * 
+	 * @param line a line containing a while/if statement and a condition in parenthesis
+	 * @return the operands to compare
+	 */
 	protected LinkedList<String> getOperandsToCompare(String line) {
 		String[] tokens = line.split("\\s|(?=[-+*/()=:;])|(?<=[^-+*/=:;][-+*/=:;])|(?<=[()])");
 		LinkedList<String> operands = new LinkedList<String>(), temps = new LinkedList<String>();
@@ -453,5 +457,43 @@ public class MM4AddressCompiler extends Compiler {
 	 */
 	protected String getTempAddr() {
 		return "Temp"+tempAddrs.size();
+	}
+	
+	/** Adds a store command in ISA code for the given variable 
+	 * 
+	 */
+	protected void store(String word) {
+		// do nothing because this is 4-address ISA
+	}
+	
+	/** Adds a jump command in ISA code for the given address/label
+	 * 
+	 * @param address
+	 */
+	protected void jump(String address) {
+		writeLine("j", jumpLabels.peekLast());
+	}
+	
+	/** Adds a return address label to the line if needed by the architecture
+	 * 
+	 */
+	protected void addReturnAddressLabel() {
+		jumpLabels.add(getReturnAddressName());
+	}
+	
+	/** Loads the result of the operation in the return value
+	 * Note: operands should have exactly 1 value
+	 */
+	protected void setReturnValue(String result, LinkedList<String> operands) {
+		writeLine("add", result, operands.poll(), "0");
+	}
+	
+	/** Adds a line for result = operand statements
+	 * 
+	 * @param result
+	 * @param operand
+	 */
+	protected void addOneOperLine(String result, String operand) {
+		writeLine("add", result, operand, "0");
 	}
 }

@@ -1,3 +1,4 @@
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -5,41 +6,22 @@ import java.util.LinkedList;
 
 
 /** General format:
- * lw resultAddr
- * lw oper1Addr
- * lw oper2Addr
- * instr resultAddr, oper1Addr, oper2Addr, nextInstrAddr
- * sw resultAddr
+ * instr operAddr
+ * 
+ * With every instruction making an implicit memory access to the accumulator
  * 
  */
-public class LoadStoreCompiler extends Compiler {
-	
-	protected LinkedList<String> sRegisters = new LinkedList<String>();
-	
-	protected void clear() {
-		super.clear();
-		sRegisters.clear();
-	}
+public class AccumulatorCompiler extends Compiler {
 	
 	/** Returns the ISA version of the variable. 
-	 * In the case of LoadStore, it's the register that holds the variable var.
+	 * In the case of MM4Address, it's just var.
 	 * If the input is already in ISA format, returns var unchanged.
 	 * 
 	 * @param var The name of a variable to translate to a register
 	 * @return The name of the register where the variable is stored
 	 */
 	protected String varToISAVar(String var) {
-		if (var.length() < 1 || var.charAt(0) == '$' || isNumeric(var)) {
-			return var;
-		} else if (tempAddrs.contains(var)) {
-			return "$t"+tempAddrs.indexOf(var);
-		} else if (sRegisters.contains(var)) {
-			return "$s"+sRegisters.indexOf(var);
-		} else if (currentArgs.contains(var)) {
-			return "$a"+currentArgs.indexOf(var);
-		} else {
-			return var;
-		}
+		return var;
 	}
 	
 	/** Translates the variable currently in ISA format back to its C-like format
@@ -50,18 +32,12 @@ public class LoadStoreCompiler extends Compiler {
 	 * @return The name of the variable held in reg
 	 */
 	protected String ISAVarToVar(String isaVar) {
-		String[] parts = isaVar.split("(?=[a-zA-Z])|(?<=[a-zA-Z])");
-		if (isaVar.charAt(0) != '$') {
-			return isaVar;
-		} else if (parts[1].matches("t")) {
-			return tempAddrs.get(Integer.parseInt(parts[2]));
-		} else if (parts[1].matches("s")) {
-			return sRegisters.get(Integer.parseInt(parts[2]));
-		} else if (parts[1].matches("a")) {
-			return currentArgs.get(Integer.parseInt(parts[2]));
-		} else {
-			return isaVar;
+		int addrLoc = isaVar.indexOf("Temp");
+		if (addrLoc > -1) {
+			return isaVar.substring(addrLoc+4);
 		}
+		
+		return isaVar;
 	}
 	
 	/** Gets the variables in a line of code and loads them as appropriate for the compiler 
@@ -72,41 +48,38 @@ public class LoadStoreCompiler extends Compiler {
 	protected void loadVars(String line) {
 		String[] words = line.split("\\s+|(?<=\\W)(?=\\w)|\\s+|(?<=\\w)(?=\\W)|\\s+");
 		vars = new HashSet<String>();
-		boolean nextIsArg = false;
 		
 		for (String w : words) {
 			if (w.toLowerCase().contentEquals("goto")) {
 				// this line is just a goto
 				break;
-			} else if (nextIsArg && w.matches("\\w")) {
-				nextIsArg = false;
-				String areg = "$a"+currentArgs.size();
-				writeLine("lw", areg, w+"($zero)");
-				currentArgs.add(w);
 			} else if (isKeyword(w)) {
 				continue;
-			} else if (isIdentifier(w)) {
-				nextIsArg = true;
-			} else if (w.matches("[a-zA-Z]") && !sRegisters.contains(w) && !currentArgs.contains(w)) { 
+			} else if (w.matches("[a-zA-Z]+")) { 
 				vars.add(w); 
 			}
 		}
 		
-		for (String v : vars) {
-			String sreg = "$s"+sRegisters.size();
-			writeLine("lw", sreg, v+"($zero)");
-			sRegisters.add(v);
-		}
 		vars.clear();
 	}
-
-		
+	
 	/** Writes the line to the output in the ISA language
 	 * 
 	 * @param operation The operation of the line
 	 * @param oper	The operands for an assignment
 	 */
 	protected void writeLine(String operation, String... operands) {
+		// reduce the line to 1 address
+		// first get the result of an assignment, if there is one
+		// first get the number of addresses
+		LinkedList<String> operandsList = new LinkedList<String>();
+		operandsList.addAll(Arrays.asList(operands));
+		while (operandsList.size() > 1 && !isLabel(operandsList.get(1))) {
+			// remove extra addresses
+			writeLine("load", operandsList.poll());
+		}
+		
+		// add label
 		StringBuffer toWrite = new StringBuffer();
 		if (!labelsToPrepend.isEmpty()) { // add a label if we have one saved
 			toWrite.append(labelsToPrepend.pollLast()+":\t");
@@ -117,18 +90,21 @@ public class LoadStoreCompiler extends Compiler {
 		programBits += 6; // 6 opcode
 		toWrite.append(operation+" ");
 		
-		for (int i=0; i<operands.length; i++) {
-			if (!isLabel(operands[i])) {
+		for (int i=0; i<operandsList.size(); i++) {
+			if (!isLabel(operandsList.get(i))) {
 				memAccesses++;
 			}
 			programBits += 24;
 			if (i > 0) {
 				toWrite.append(", ");
 			}
-			toWrite.append(operands[i]);
+			toWrite.append(operandsList.get(i));
 		}
 		
 		toWrite.append("\n");
+		if (!operation.matches("j|jr|jal")) {
+			memAccesses++; // to account for the accumulator access
+		}
 		numInstructions++;
 		
 		if (insideFunctionDeclaration) {
@@ -146,21 +122,21 @@ public class LoadStoreCompiler extends Compiler {
 	 */
 	protected void addArrayLoadingLine(String token, String tempName) {
 		String[] tokenParts = token.split("[\\[\\]]");
-		String index = tokenParts[1], tokenReg = varToISAVar(tokenParts[0]), tempReg;
-		tempAddrs.add(token);
+		String index = tokenParts[1], tokenReg = varToISAVar(tokenParts[0]);
 		
 		if (index.matches("-?\\d+")) {
 			// index is an integer
-			writeLine("lw", tempName, String.valueOf(4 * Integer.parseInt(index))+"("+tokenReg+")");
+			writeLine("lw", String.valueOf(4 * Integer.parseInt(index))+"("+tokenReg+")");
+			numInstructions++;
+			memAccesses++;
 		} else {
 			// index is a variable
 			String indexReg = varToISAVar(tokenParts[1]);
-			tempReg = getTempAddr();
-			writeLine("load", tempReg, indexReg);
-			writeLine("add", tempReg, tempReg);
-			writeLine("add", tempReg, tempReg);
-			writeLine("add", tempReg, tokenReg);
-			writeLine("lw", tempName, "$zero("+tempReg+")");
+			writeLine("load", indexReg);
+			writeLine("muli", "4");
+			writeLine("add", tokenReg);
+			writeLine("store", tempName);
+			writeLine("lw", "0("+tempName+")");
 		}
 	}
 	
@@ -175,7 +151,7 @@ public class LoadStoreCompiler extends Compiler {
 		String part1 = line.substring(conditionStart, conditionEnd), part2 = line.substring(conditionEnd+1);
 		LinkedList<String> operands = getOperandsToCompare(part1);
 		
-		String oper1 = operands.poll(), oper2 = operands.poll(), label = "", temp;
+		String oper1 = operands.poll(), oper2 = operands.poll(), label = "";
 		boolean hasGoto = (getOperation(line) == Operation.GOTO)? true : false;
 		if (hasGoto) {
 			String[] tokens = part2.split("\\s|(?=[-+*/()=:;])|(?<=[^-+*/=:;][-+*/=:;])|(?<=[()])");
@@ -194,16 +170,17 @@ public class LoadStoreCompiler extends Compiler {
 		
 		switch (getIfCondition(part1)) {
 		case EQ: // equal
-			writeLine("beq", oper1, oper2); 
+			writeLine("load", oper1);
+			writeLine("beq", oper2); 
 			writeLine("j", label); break;
-		case NE: // not equal  
-			writeLine("bne", oper1, oper2);  
+		case NE: // not equal 
+			writeLine("load", oper1);
+			writeLine("bne", oper2); 
 			writeLine("j", label); break;
 		case LE: // less than  
-			temp = getTempAddr();
-			writeLine("load", temp, oper1);
-			writeLine("slt", temp, oper2);
-			writeLine("bne", temp, "$zero");  
+			writeLine("load", oper1);
+			writeLine("slt", oper2);
+			writeLine("bne", "0"); 
 			writeLine("j", label); break;
 		}
 		
@@ -258,16 +235,17 @@ public class LoadStoreCompiler extends Compiler {
 		// because failing the original condition breaks the loop 
 		// (so succeeding the opposite jumps to outside the loop)
 		case EQ: // equal
-			writeLine("bne", oper1, oper2); 
+			writeLine("load", oper1);
+			writeLine("bne", oper2); 
 			writeLine("j", label); break;
-		case NE: // not equal  
-			writeLine("beq", oper1, oper2); 
+		case NE: // not equal
+			writeLine("load", oper1);
+			writeLine("beq", oper2); 
 			writeLine("j", label); break;
 		case LE: // less than
-			String temp = getTempAddr();
-			writeLine("load", temp, oper1);
-			writeLine("slt", temp, oper2);
-			writeLine("beq", temp, "$zero");  
+			writeLine("load", oper1);
+			writeLine("slt", oper2);
+			writeLine("beq", "0"); 
 			writeLine("j", label); break;
 		}
 
@@ -294,27 +272,23 @@ public class LoadStoreCompiler extends Compiler {
 		}
 		
 		// add the lines for the switch variable
-		String switchVar = line.substring(line.indexOf('(')+1, line.indexOf(')'));
-		String tempAddr = getTempAddr(), exitLabel = "Exit"+jumpLabels.size(); 
+		String switchVar = line.substring(line.indexOf('(')+1, line.indexOf(')')),
+				exitLabel = "Exit"+jumpLabels.size(), temp = getTempAddr(); 
 		jumpLabels.add(exitLabel);
 		labels.add(jumpLabels.peekLast());
-		writeLine("load", tempAddr, switchVar);
-		writeLine("slti", tempAddr, switchVar);
-		writeLine("bne", tempAddr, "$zero");
+		writeLine("load", switchVar);
+		writeLine("slti", switchVar);
+		writeLine("bne", "0");
 		writeLine("j", exitLabel);
-		writeLine("load", tempAddr, switchVar);
-		writeLine("slti", tempAddr, String.valueOf(numCases));
-		writeLine("beq", tempAddr, "$zero");
+		writeLine("load", switchVar);
+		writeLine("slti", String.valueOf(numCases));
+		writeLine("beq", "0");
 		writeLine("j", exitLabel);
-		writeLine("load", tempAddr, switchVar);
-		writeLine("add", tempAddr, tempAddr);
-		writeLine("add", tempAddr, tempAddr);
-		String sreg = "$s"+sRegisters.size();
-		writeLine("lw", sreg, "addrJumpTable($zero)");
-		sRegisters.add("addrJumpTable");
-		writeLine("add", tempAddr, sreg);
-		writeLine("lw", tempAddr, "$zero("+tempAddr+")");
-		writeLine("jr", tempAddr);
+		writeLine("load", switchVar);
+		writeLine("mul", "4");
+		writeLine("add", "addrJumpTable");
+		writeLine("store", temp);
+		writeLine("jr", temp);
 		
 		int i = 0;
 		for (String caseLine : cases) {
@@ -342,16 +316,17 @@ public class LoadStoreCompiler extends Compiler {
 	 */
 	protected void handleFunctionCall(String line) throws StringNotFoundException {
 		if (insideFunctionDeclaration) {
-			// store local variables
-			writeLine("subi", getStackPointerName(), getStackPointerName(), "12");
-			int i = 0;
+			// store local variables 
+			int i=0;
+			writeLine("load", getReturnAddressName());
+			writeLine("store", "stackAddr"+i);
+			stack.add(getReturnAddressName());
 			for (String a : currentArgs) {
-				writeLine("sw", varToISAVar(a), "$ "+(4*i)+"("+getStackPointerName()+")");
 				i++;
+				writeLine("load", a);
+				writeLine("store", "stackAddr"+i);
 				stack.add(a);
 			}
-			writeLine("sw", getReturnAddressName(), "$ "+(4*i)+"("+getStackPointerName()+")");
-			stack.add(getReturnAddressName());
 			returns.add(getReturnAddressName());
 		}
 		
@@ -367,26 +342,30 @@ public class LoadStoreCompiler extends Compiler {
 		}
 		functions.put(name, new LinkedList<String>());
 		
-		// Get the arguments and replace them with "$a0", "$a1" etc
+		// Get the arguments and replace them with "arg0", "arg1" etc
 		String[] argsPart = line.substring(line.indexOf("(")+1, line.indexOf(")")).split("[,\\s]");
 		for (String a : argsPart) {
 			if (a.isEmpty()) {
 				continue;
 			}
-			argLabel = "$a"+functions.get(name).size();
+			argLabel = "arg"+functions.get(name).size();
 			functions.get(name).add(a);
-			if (!argLabel.contentEquals(varToISAVar(a))) { // unless they already match
-				writeLine("addi", argLabel, varToISAVar(a), "$zero");
+			if (!argLabel.matches(a)) { // unless they already match
+				writeLine("load", a);
+				writeLine("store", argLabel);
 			}
 		}
-		// add the function call in ISA code
 		writeLine("jal", name);
+		jumpLabels.add(getReturnAddressName());
 		if (insideFunctionDeclaration) {
-			// load the stored local variables after function call
+			labelsToPrepend.add(jumpLabels.pollLast());
+			// load the stored local variables
 			returns.poll();
 			for (String s : stack) {
-				writeLine("lw", varToISAVar(s), "$ "+(4*stack.indexOf(s))+"("+getStackPointerName()+")");
+				writeLine("load", "stackAddr"+stack.indexOf(s));
+				writeLine("store", s);
 			}
+			stack.removeAll(stack);
 		}
 	}
 	
@@ -416,18 +395,18 @@ public class LoadStoreCompiler extends Compiler {
 		String[] argsPart = line.substring(line.indexOf("(")+1, line.indexOf(")")).split("[,\\s]");
 		int argsNum = 0; 
 		for (String a : argsPart) {
-			if (a.isEmpty() || isIdentifier(a) || currentArgs.contains(a)) {
+			if (a.isEmpty() || isIdentifier(a)) {
 				continue;
 			}
 			args.add(a);
-			String replacement = "$a"+(argsNum++);
+			String replacement = "arg"+(argsNum++);
 			argReplacements.put(a, replacement);
 			currentArgs.add(replacement);
 		}
 		String functionBody = line.substring(line.indexOf("{")+1, line.indexOf("}"));
 		for (String arg : argReplacements.keySet()) {
 			// replace eg. "x" by "$s0" in every instance of "x"
-			functionBody = functionBody.replaceAll(arg.replaceAll("$",  "\\$"), argReplacements.get(arg).replaceAll("$", "\\$"));
+			functionBody = functionBody.replaceAll(arg, argReplacements.get(arg));
 		}
 		
 		String[] bodyLines = functionBody.split("(?<=;)");
@@ -435,11 +414,6 @@ public class LoadStoreCompiler extends Compiler {
 			translateAndAppendLine(b);
 		}
 		
-		// go back to old function
-		if (stack.size() > 0) {
-			writeLine("addi", getStackPointerName(), getStackPointerName(), String.valueOf(4*stack.size()));
-			stack.removeAll(stack);
-		}
 		writeLine("jr", getReturnAddressName());
 		insideFunctionDeclaration = false;
 		currentArgs.clear();
@@ -450,23 +424,15 @@ public class LoadStoreCompiler extends Compiler {
 	 * 
 	 */
 	protected String getReturnValueName() {
-		return "$v0";
+		return "returnValue";
 	}
-
+	
 	/** Returns the name of the "return value" variable in ISA code to the output.
 	 * Eg. in LoadStore it would be $ra, or in MM 4 Address it would be returnAddress 
 	 * 
 	 */
 	protected String getReturnAddressName() {
-		return "$ra";
-	}
-	
-	/** Returns the name of the stack pointer variable in ISA code to the output.
-	 * Eg. in LoadStore it would be $sp 
-	 * 
-	 */
-	protected String getStackPointerName() {
-		return "$sp";
+		return "returnAddress"+returns.size();
 	}
 	
 	/** Returns the operands in parenthesis to be compared in a while/if statement
@@ -510,16 +476,14 @@ public class LoadStoreCompiler extends Compiler {
 	 * @return
 	 */
 	protected String getTempAddr() {
-		return "$t"+tempAddrs.size();
+		return "Temp"+tempAddrs.size();
 	}
 	
 	/** Adds a store command in ISA code for the given variable 
 	 * 
 	 */
 	protected void store(String word) {
-		if (!word.contentEquals(getReturnValueName())) {
-			writeLine("store", ISAVarToVar(word), varToISAVar(word));
-		}
+		writeLine("store", word);
 	}
 	
 	/** Adds a jump command in ISA code for the given address/label
@@ -534,14 +498,15 @@ public class LoadStoreCompiler extends Compiler {
 	 * 
 	 */
 	protected void addReturnAddressLabel() {
-		// we don't need this because we already have $ra embedded
+		jumpLabels.add(getReturnAddressName());
 	}
 	
 	/** Loads the result of the operation in the return value
 	 * Note: operands should have exactly 1 value
 	 */
 	protected void setReturnValue(String result, LinkedList<String> operands) {
-		writeLine("add", result, operands.poll(), "$zero");
+		writeLine("load", operands.poll());
+		store(result);
 	}
 	
 	/** Adds a line for result = operand statements
@@ -550,6 +515,7 @@ public class LoadStoreCompiler extends Compiler {
 	 * @param operand
 	 */
 	protected void addOneOperLine(String result, String operand) {
-		writeLine("add", result, operand, "$zero");
+		writeLine("load", operand);
+		store(result);
 	}
 }

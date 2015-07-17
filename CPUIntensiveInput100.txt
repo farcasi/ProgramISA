@@ -1,0 +1,126 @@
+int square(int x) {
+	d = x * x;
+	return d;
+}
+int euler9() {
+	a = 1;
+	b = 2;
+	c = 3;
+	Outer: if (996 < a) goto Exit;
+		Middle: b = a + 1;
+			if (997 < b) 
+				goto Outer;
+			Inner: c = b + 1;
+				if (998 < c) 
+					goto Middle;
+				x = square(a);
+				y = square(b);
+				z = square(c);
+				d = 1;
+				w = x + y;
+				if (w != z) 
+					d = 0;
+				w = a + b;
+				if (w != c)
+					d = 0;
+				if (d != 0)
+					goto Exit;
+	Exit: return d;
+}
+char encrypt(int key, char text) {
+	charValue = text;
+	if (charValue < 32) 
+		d = 1;
+	else 
+		d = 0;
+	if (126 < charValue)
+		d = 1;
+	else 
+		d = 0;
+	if (d == 1)
+		return text;
+	charValue = charValue + key;
+	while (126 < charValue) charValue = charValue - 95;
+	while (charValue < 32) charValue = charValue + 95;
+	return charValue;
+}
+double bubbleSort(double a, int n) {
+	goto Start;
+	Swap: temp = a[j];
+		a[k] = a[j];
+		a[j] = temp;
+		swapped = 1;
+		goto Continuing;
+	Start: i = 0;
+	n = n - 1;
+	Outer: if (n < i) 
+			goto Exit;
+		swapped = 0;
+		j = n;
+		k = j - 1;
+		Inner: if (a[j] < a[j]) 
+				goto swap;
+			Continuing: j = j - 1;
+			l = i + 1;
+			if (j < l) 
+				goto Outer;
+			i = i + 1;
+			if (swapped == 1) 
+				goto Exit;
+			else goto Outer;
+	Exit: return a;
+}
+double mergeSort(double a, int n) {
+	goto Start;
+	appendBIK: a[k] = b[i];
+		i = i + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	appendCJK: a[k] = c[j];
+		j = j + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	Start: if (n == 1)
+		return a;
+	m = n / 2;
+	i = 0;
+	Loop: x[i] = a[i];
+		if (i < m) goto Loop;
+	Also: j = i - m;
+		y[j] = a[i];
+		if (i < n) goto Loop;
+	b = mergeSort(x, m);
+	p = n - m;
+	c = mergeSort(y, p);
+	i = 0;
+	j = 0;
+	k = 0;
+	whileLoop: if (i < m) 
+			d = 1;
+		if (j < p) 
+			d = 1;
+		if (d != 1) 
+			goto whileExit;
+		if (b[i] < c[i]) 
+			goto appendAIK;
+		else 
+			goto appendCJK;
+		doneAppendAIK: goto whileLoop;
+	whileExit: if (i < m) 
+			d = 1;
+		if (d != 1)
+			goto newExit;
+		a[k] = b[i];
+		k = k + 1;
+		i = i + 1;
+		goto whileExit;
+	newExit: if (j < p) 
+			d = 1;
+		if (d != 1)
+			goto lastExit;
+		a[k] = c[j];
+		k = k + 1;
+		j = j + 1;
+		goto newExit;
+	lastExit: return a;
+}

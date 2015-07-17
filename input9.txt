@@ -1,0 +1,4 @@
+sum(a, b);
+int sum(int x, int y) {
+    return x + y;
+}

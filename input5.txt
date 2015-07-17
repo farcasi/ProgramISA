@@ -1,0 +1,3 @@
+Loop: G = G + A[I];
+      I = I + J;
+      If (I != H) Goto Loop;

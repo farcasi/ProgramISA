@@ -1,0 +1,100 @@
+int add(int a, int b) {
+	x = a + b + c;
+	return x;
+}
+double divide(int a, int b) {
+	x = a / b;
+	return x;
+}
+double abs(double x) {
+	z = 1 - 2;
+	if (x < 0) 
+		return x * z;
+	else 
+		return x;
+}
+double fn(double x) {
+	y = sin(x);
+	return y;
+}
+double findRoot(double a, double b, double e) {
+	y = fn(a);
+	z = fn(b);
+	if (0 < y) 
+		c = 1;
+	else 
+		c = 0;
+	if (0 < z) 
+		d = 1;
+	else 
+		d = 0;
+	if (c == d) 
+		return 0;
+	x = sum(a, b);
+	x = divide(x, 2);
+	f = a - x;
+	if (f < 0) 
+		f = abs(f);
+	if (f < e) 
+		return x;
+	w = fn(x);
+	if (0 < w)
+		g = 1;
+	else
+		g = 0;
+	if (c == g)
+		return findRoot(x, b, e);
+	else
+		return findRoot(a, x, e);
+}
+int average(double x, double y) {
+	c = add(x, y);
+	d = divide(c, 2);
+	return d;
+}
+int fibIter(int n) {
+	if (n < 1) 
+		return 1 - 2;
+	if (46 < n) 
+		return 1 - 2;
+	sum[0] = 0;
+	sum[1] = 1;
+	sum[2] = 1;
+	if (n == 1) 
+		return sum[n];
+	if (n == 2) 
+		return sum[n];
+	i = 3;
+	Loop: if (n < i) 
+			goto Exit;
+		a = i - 1;
+		b = i - 2;
+		sum[i] = sum[a] + sum[b];
+		sum[a] = sum[b];
+		sum[b] = sum[i];
+		goto Loop;
+	Exit: return sum[n];
+}
+int fibRecur(int n) {
+	if (n < 1)
+		return 1 - 2;
+	if (46 < n) 
+		return 1 - 2;
+	if (n == 1)
+		return 1;
+	if (n == 2)
+		return 2;
+	x = n - 1;
+	y = n - 2;
+	x = fibRecur(x);
+	y = fibRecur(y);
+	return x + y;
+}
+void main() {
+	i = 3;
+	Loop: i = i * 2 - 1;
+		sum = fibIter(i);
+		twosum = fibRecur(i);
+		if (i < 10) goto Loop;
+	Exit:
+}

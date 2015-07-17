@@ -1,0 +1,3 @@
+int sumSquare(int x, int y) {
+  return mult(x, x) + y;
+}

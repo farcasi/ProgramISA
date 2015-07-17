@@ -1,0 +1,508 @@
+int square(int x) {
+	d = x * x;
+	return d;
+}
+int euler9() {
+	a = 1;
+	b = 2;
+	c = 3;
+	Outer: if (996 < a) goto Exit;
+		Middle: b = a + 1;
+			if (997 < b) 
+				goto Outer;
+			Inner: c = b + 1;
+				if (998 < c) 
+					goto Middle;
+				x = square(a);
+				y = square(b);
+				z = square(c);
+				d = 1;
+				w = x + y;
+				if (w != z) 
+					d = 0;
+				w = a + b;
+				if (w != c)
+					d = 0;
+				if (d != 0)
+					goto Exit;
+	Exit: return d;
+}
+char encrypt(int key, char text) {
+	charValue = text;
+	if (charValue < 32) 
+		d = 1;
+	else 
+		d = 0;
+	if (126 < charValue)
+		d = 1;
+	else 
+		d = 0;
+	if (d == 1)
+		return text;
+	charValue = charValue + key;
+	while (126 < charValue) charValue = charValue - 95;
+	while (charValue < 32) charValue = charValue + 95;
+	return charValue;
+}
+double mergeSort(double a, int n) {
+	goto Start;
+	appendBIK: a[k] = b[i];
+		i = i + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	appendCJK: a[k] = c[j];
+		j = j + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	Start: if (n == 1)
+		return a;
+	m = n / 2;
+	i = 0;
+	Loop: x[i] = a[i];
+		if (i < m) goto Loop;
+	Also: j = i - m;
+		y[j] = a[i];
+		if (i < n) goto Loop;
+	b = mergeSort(x, m);
+	p = n - m;
+	c = mergeSort(y, p);
+	i = 0;
+	j = 0;
+	k = 0;
+	whileLoop: if (i < m) 
+			d = 1;
+		if (j < p) 
+			d = 1;
+		if (d != 1) 
+			goto whileExit;
+		if (b[i] < c[i]) 
+			goto appendAIK;
+		else 
+			goto appendCJK;
+		doneAppendAIK: goto whileLoop;
+	whileExit: if (i < m) 
+			d = 1;
+		if (d != 1)
+			goto newExit;
+		a[k] = b[i];
+		k = k + 1;
+		i = i + 1;
+		goto whileExit;
+	newExit: if (j < p) 
+			d = 1;
+		if (d != 1)
+			goto lastExit;
+		a[k] = c[j];
+		k = k + 1;
+		j = j + 1;
+		goto newExit;
+	lastExit: return a;
+}
+double fillWithRandoms(double a, int n) {
+	i = 0;
+	Loop: a[i] = 4;
+		i = i + 1;
+		if (i < n)
+			goto Loop;
+	return a;
+}
+n = 1000000000000000000000000000;
+a = fillWithRandoms(a, n);
+a = mergeSort(a);
+int ackermann(int m, int n) {
+	a = n + 1;
+	b = m - 1;
+	c = n - 1;
+	if (m == 0) return a;
+	if (n == 0) return ackermann(b, 1);
+	x = ackermann(m, c);
+	return ackermann(b, x);
+}
+i = 0;
+j = 0;
+LoopOuter: i = i + 1;
+	LoopInner: j = j + 1;
+		d = ackermann(i, j);
+		if (j < i) 
+			goto LoopInner;
+	if (i < 100) 
+		goto LoopOuter;
+int isPrime(int n) {
+	if (n == 2) 
+		return 1;
+	if (n == 3) 
+		return 1;
+	i = 4;
+	Loop: c = n - i;
+		while (1 < c) 
+			c = c - i;
+		if (c == 0) 
+			return 0;
+		i = i + 1;
+		if (i < n)
+			goto Loop;
+	if (i == n)
+		return 1;
+	else 
+		return 0;
+}
+int isPrimeAgain(int n) {
+	if (n < 2) 
+		return 0;
+	if (n < 4)
+		return 1;
+	m = n;
+	while (1 < m) 
+		m = m - 2;
+	if (m == 0) 
+		return 0;
+	m = n;
+	while (1 < m) 
+		m = m - 3;
+	if (m == 0) 
+		return 0;
+	i = 5;
+	Loop: 
+		m = n;
+		while (1 < m) 
+			m = m - i;
+		if (m == 0) 
+			return 0;
+		m = n;
+		while (1 < m) 
+			m = m - i - 2;
+		if (m == 0) 
+			return 0;
+		i = i + 6;
+		j = i * i;
+		m = n + 1;
+		if (j < m) goto Loop;
+	return 1;
+}
+int factorial(int n) {
+	i = 1;
+	total = 1;
+	Loop: i = i + 1;
+		total = total * i;
+		if (i < n) 
+			goto Loop;
+	return total;
+}
+i = 1;
+Loop: i = i + 1;
+	a = factorial(i);
+	b = isPrime(a);
+	c = isPrimeAgain(a);
+	if (b == c)
+		goto Loop;
+i = 32;
+Loop: i = i + 1;
+	d = encrypt(i);
+	if (i < 128)
+	goto Loop;
+LabelA: goto labelB;
+labelB: goto labelA;
+int square(int x) {
+	d = x * x;
+	return d;
+}
+int euler9() {
+	a = 1;
+	b = 2;
+	c = 3;
+	Outer: if (996 < a) goto Exit;
+		Middle: b = a + 1;
+			if (997 < b) 
+				goto Outer;
+			Inner: c = b + 1;
+				if (998 < c) 
+					goto Middle;
+				x = square(a);
+				y = square(b);
+				z = square(c);
+				d = 1;
+				w = x + y;
+				if (w != z) 
+					d = 0;
+				w = a + b;
+				if (w != c)
+					d = 0;
+				if (d != 0)
+					goto Exit;
+	Exit: return d;
+}
+char encrypt(int key, char text) {
+	charValue = text;
+	if (charValue < 32) 
+		d = 1;
+	else 
+		d = 0;
+	if (126 < charValue)
+		d = 1;
+	else 
+		d = 0;
+	if (d == 1)
+		return text;
+	charValue = charValue + key;
+	while (126 < charValue) charValue = charValue - 95;
+	while (charValue < 32) charValue = charValue + 95;
+	return charValue;
+}
+double mergeSort(double a, int n) {
+	goto Start;
+	appendBIK: a[k] = b[i];
+		i = i + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	appendCJK: a[k] = c[j];
+		j = j + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	Start: if (n == 1)
+		return a;
+	m = n / 2;
+	i = 0;
+	Loop: x[i] = a[i];
+		if (i < m) goto Loop;
+	Also: j = i - m;
+		y[j] = a[i];
+		if (i < n) goto Loop;
+	b = mergeSort(x, m);
+	p = n - m;
+	c = mergeSort(y, p);
+	i = 0;
+	j = 0;
+	k = 0;
+	whileLoop: if (i < m) 
+			d = 1;
+		if (j < p) 
+			d = 1;
+		if (d != 1) 
+			goto whileExit;
+		if (b[i] < c[i]) 
+			goto appendAIK;
+		else 
+			goto appendCJK;
+		doneAppendAIK: goto whileLoop;
+	whileExit: if (i < m) 
+			d = 1;
+		if (d != 1)
+			goto newExit;
+		a[k] = b[i];
+		k = k + 1;
+		i = i + 1;
+		goto whileExit;
+	newExit: if (j < p) 
+			d = 1;
+		if (d != 1)
+			goto lastExit;
+		a[k] = c[j];
+		k = k + 1;
+		j = j + 1;
+		goto newExit;
+	lastExit: return a;
+}
+double fillWithRandoms(double a, int n) {
+	i = 0;
+	Loop: a[i] = 4;
+		i = i + 1;
+		if (i < n)
+			goto Loop;
+	return a;
+}
+n = 1000000000000000000000000000;
+a = fillWithRandoms(a, n);
+a = mergeSort(a);
+int ackermann(int m, int n) {
+	a = n + 1;
+	b = m - 1;
+	c = n - 1;
+	if (m == 0) return a;
+	if (n == 0) return ackermann(b, 1);
+	x = ackermann(m, c);
+	return ackermann(b, x);
+}
+i = 0;
+j = 0;
+LoopOuter: i = i + 1;
+	LoopInner: j = j + 1;
+		d = ackermann(i, j);
+		if (j < i) 
+			goto LoopInner;
+	if (i < 100) 
+		goto LoopOuter;
+int isPrime(int n) {
+	if (n == 2) 
+		return 1;
+	if (n == 3) 
+		return 1;
+	i = 4;
+	Loop: c = n - i;
+		while (1 < c) 
+			c = c - i;
+		if (c == 0) 
+			return 0;
+		i = i + 1;
+		if (i < n)
+			goto Loop;
+	if (i == n)
+		return 1;
+	else 
+		return 0;
+}
+int isPrimeAgain(int n) {
+	if (n < 2) 
+		return 0;
+	if (n < 4)
+		return 1;
+	m = n;
+	while (1 < m) 
+		m = m - 2;
+	if (m == 0) 
+		return 0;
+	m = n;
+	while (1 < m) 
+		m = m - 3;
+	if (m == 0) 
+		return 0;
+	i = 5;
+	Loop: 
+		m = n;
+		while (1 < m) 
+			m = m - i;
+		if (m == 0) 
+			return 0;
+		m = n;
+		while (1 < m) 
+			m = m - i - 2;
+		if (m == 0) 
+			return 0;
+		i = i + 6;
+		j = i * i;
+		m = n + 1;
+		if (j < m) goto Loop;
+	return 1;
+}
+int factorial(int n) {
+	i = 1;
+	total = 1;
+	Loop: i = i + 1;
+		total = total * i;
+		if (i < n) 
+			goto Loop;
+	return total;
+}
+i = 1;
+Loop: i = i + 1;
+	a = factorial(i);
+	b = isPrime(a);
+	c = isPrimeAgain(a);
+	if (b == c)
+		goto Loop;
+i = 32;
+Loop: i = i + 1;
+	d = encrypt(i);
+	if (i < 128)
+	goto Loop;
+LabelA: goto labelB;
+labelB: goto labelA;
+int square(int x) {
+	d = x * x;
+	return d;
+}
+int euler9() {
+	a = 1;
+	b = 2;
+	c = 3;
+	Outer: if (996 < a) goto Exit;
+		Middle: b = a + 1;
+			if (997 < b) 
+				goto Outer;
+			Inner: c = b + 1;
+				if (998 < c) 
+					goto Middle;
+				x = square(a);
+				y = square(b);
+				z = square(c);
+				d = 1;
+				w = x + y;
+				if (w != z) 
+					d = 0;
+				w = a + b;
+				if (w != c)
+					d = 0;
+				if (d != 0)
+					goto Exit;
+	Exit: return d;
+}
+char encrypt(int key, char text) {
+	charValue = text;
+	if (charValue < 32) 
+		d = 1;
+	else 
+		d = 0;
+	if (126 < charValue)
+		d = 1;
+	else 
+		d = 0;
+	if (d == 1)
+		return text;
+	charValue = charValue + key;
+	while (126 < charValue) charValue = charValue - 95;
+	while (charValue < 32) charValue = charValue + 95;
+	return charValue;
+}
+double mergeSort(double a, int n) {
+	goto Start;
+	appendBIK: a[k] = b[i];
+		i = i + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	appendCJK: a[k] = c[j];
+		j = j + 1;
+		k = k + 1;
+		goto doneAppendAIK;
+	Start: if (n == 1)
+		return a;
+	m = n / 2;
+	i = 0;
+	Loop: x[i] = a[i];
+		if (i < m) goto Loop;
+	Also: j = i - m;
+		y[j] = a[i];
+		if (i < n) goto Loop;
+	b = mergeSort(x, m);
+	p = n - m;
+	c = mergeSort(y, p);
+	i = 0;
+	j = 0;
+	k = 0;
+	whileLoop: if (i < m) 
+			d = 1;
+		if (j < p) 
+			d = 1;
+		if (d != 1) 
+			goto whileExit;
+		if (b[i] < c[i]) 
+			goto appendAIK;
+		else 
+			goto appendCJK;
+		doneAppendAIK: goto whileLoop;
+	whileExit: if (i < m) 
+			d = 1;
+		if (d != 1)
+			goto newExit;
+		a[k] = b[i];
+		k = k + 1;
+		i = i + 1;
+		goto whileExit;
+	newExit: if (j < p) 
+			d = 1;
+		if (d != 1)
+			goto lastExit;
+		a[k] = c[j];
+		k = k + 1;
+		j = j + 1;
+		goto newExit;
+	lastExit: return a;
+}

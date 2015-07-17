@@ -1,0 +1,202 @@
+int add(int a, int b) {
+	x = a + b + c;
+	return x;
+}
+double divide(int a, int b) {
+	x = a / b;
+	return x;
+}
+double abs(double x) {
+	z = 1 - 2;
+	if (x < 0) 
+		return x * z;
+	else 
+		return x;
+}
+double fn(double x) {
+	y = sin(x);
+	return y;
+}
+double findRoot(double a, double b, double e) {
+	y = fn(a);
+	z = fn(b);
+	if (0 < y) 
+		c = 1;
+	else 
+		c = 0;
+	if (0 < z) 
+		d = 1;
+	else 
+		d = 0;
+	if (c == d) 
+		return 0;
+	x = sum(a, b);
+	x = divide(x, 2);
+	f = a - x;
+	if (f < 0) 
+		f = abs(f);
+	if (f < e) 
+		return x;
+	w = fn(x);
+	if (0 < w)
+		g = 1;
+	else
+		g = 0;
+	if (c == g)
+		return findRoot(x, b, e);
+	else
+		return findRoot(a, x, e);
+}
+double average(double x, double y) {
+	c = add(x, y);
+	d = divide(c, 2);
+	return d;
+}
+int fibIter(int n) {
+	if (n < 1) 
+		return 1 - 2;
+	if (46 < n) 
+		return 1 - 2;
+	sum[0] = 0;
+	sum[1] = 1;
+	sum[2] = 1;
+	if (n == 1) 
+		return sum[n];
+	if (n == 2) 
+		return sum[n];
+	i = 3;
+	Loop: if (n < i) 
+			goto Exit;
+		a = i - 1;
+		b = i - 2;
+		sum[i] = sum[a] + sum[b];
+		sum[a] = sum[b];
+		sum[b] = sum[i];
+		goto Loop;
+	Exit: return sum[n];
+}
+int fibRecur(int n) {
+	if (n < 1)
+		return 1 - 2;
+	if (46 < n) 
+		return 1 - 2;
+	if (n == 1)
+		return 1;
+	if (n == 2)
+		return 2;
+	x = n - 1;
+	y = n - 2;
+	x = fibRecur(x);
+	y = fibRecur(y);
+	return x + y;
+}
+void main() {
+	i = 3;
+	Loop: i = i * 2 - 1;
+		sum = fibIter(i);
+		twosum = fibRecur(i);
+		if (i < 10) goto Loop;
+}
+main();
+int trialDivision(int n) {
+	if (n < 2)
+		return a;
+	goto Start;
+	Red: f[i] = x
+	i = i + 1;
+	goto Blue;
+	Start: i = 0;
+	p = 3;
+	Loop: q = p * p;
+		x = n / p;
+		if (x < p)
+			goto Red;
+		Blue: n = n / p;
+		if (p < n)
+			goto Loop;
+	if (1 < n)
+		f[i] = n;
+	return f;
+}
+int ff(int n) {
+	a = n / 2;
+	Start: b = a * a - n;
+	i = 1;
+	Loop: j = i * i;
+		if (b < j) 
+			goto Exit;
+		i = i + 1;
+		goto Loop;
+	Exit: i = i - 1;
+	j = i * i;
+	if (j == b) goto Equal;
+	else goto Start;
+	Equal: return a - (b / 2);
+}
+a = trialDivision(5);
+b = trialDivision(10);
+c = a * a;
+if (c < b) 
+	d = 1;
+else 
+	d = 0;
+goto Start;
+Yay: a[i] = x;
+i = i + 1;
+goto Continuing;
+Start: a[0] = 2;
+i = 1;
+x = 3;
+Loop: t = ff(x);
+	if (t == 1)
+		goto Yay;
+	x = x + 2;
+	Continuing: if (i < 100)
+		goto Loop;
+i = 0;
+Loop: x = a[i] + 1;
+b[i] = findRoot(a[i], x, 0.001);
+i = i + 1;
+if (i < 100) goto Loop;
+sum = 0;
+i = 0;
+while (i < 100) sum = sum + b[i];
+i = 0;
+alsoSum = 0;
+while (i < 10) 
+	alsoSum = alsoSum + a[i];
+if (sum < alsoSum) 
+	d = 1;
+double bubbleSort(double a, int n) {
+	goto Start;
+	Swap: temp = a[j];
+		a[k] = a[j];
+		a[j] = temp;
+		swapped = 1;
+		goto Continuing;
+	Start: i = 0;
+	n = n - 1;
+	Outer: if (n < i) 
+			goto Exit;
+		swapped = 0;
+		j = n;
+		k = j - 1;
+		Inner: if (a[j] < a[j]) 
+				goto swap;
+			Continuing: j = j - 1;
+			l = i + 1;
+			if (j < l) 
+				goto Outer;
+			i = i + 1;
+			if (swapped == 1) 
+				goto Exit;
+			else goto Outer;
+	Exit: return a;
+}
+i = 2000000000000;
+j = 1;
+Loop: a[j] = i;
+	i = i - 1;
+	j = j + 1;
+	if (j < i) goto Loop;
+bubbleSort(a, j);

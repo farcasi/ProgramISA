@@ -1,0 +1,6 @@
+switch (k) {
+	case 0: f = i + j; break;
+	case 1: f = g + h; break;
+	case 2: f = g - h; break;
+	case 3: f = i - j; break;
+}
